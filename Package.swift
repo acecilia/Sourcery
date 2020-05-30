@@ -50,6 +50,7 @@ let package = Package(
         ]),
         .target(name: "SwiftTemplateEngine", dependencies: [
           "PathKit",
+          "SourceryUtils",
         ]),
         .target(name: "SourcerySwift", dependencies: [
           "PathKit",

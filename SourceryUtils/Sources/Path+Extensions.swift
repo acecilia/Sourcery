@@ -9,8 +9,6 @@
 import Foundation
 import PathKit
 
-public typealias Path = PathKit.Path
-
 extension Path {
     public static func cleanTemporaryDir(name: String) -> Path {
         guard let tempDirURL = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("Sourcery.\(name)") else { fatalError("Unable to get temporary path") }

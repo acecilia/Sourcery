@@ -37,6 +37,12 @@ extension String {
             return x.escaped(asASCII: true)
             }.joined(separator: "")
     }
+
+    func sha256() -> String? {
+        guard let data = data(using: String.Encoding.utf8) else { return nil }
+        let rc = data.sha256().base64EncodedString(options: [])
+        return rc
+    }
 }
 
 extension NSString {

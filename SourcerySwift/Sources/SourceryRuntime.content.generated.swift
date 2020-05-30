@@ -1,4 +1,4 @@
-let sourceryRuntimeFiles: [FolderSynchronizer.File] = [
+let sourceryRuntimeFiles: [SwiftTemplate.File] = [
     .init(name: "AccessLevel.swift", content:
 """
 //

@@ -48,10 +48,16 @@ let package = Package(
         .target(name: "SourceryJS", dependencies: [
           "PathKit"
         ]),
-        .target(name: "SourcerySwift", dependencies: [
+        .target(name: "SwiftTemplateEngine", dependencies: [
           "PathKit",
           "SourceryRuntime",
           "SourceryUtils"
+        ]),
+        .target(name: "SourcerySwift", dependencies: [
+          "PathKit",
+          "SourceryRuntime",
+          "SourceryUtils",
+          "SwiftTemplateEngine"
         ]),
         .target(name: "TryCatch", path: "TryCatch"),
     ]

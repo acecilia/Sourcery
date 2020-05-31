@@ -12,10 +12,16 @@ import SwiftTemplateEngine
 
 open class SwiftTemplate: SwiftTemplateEngine.SwiftTemplate {
     public init(path: Path, cachePath: Path? = nil, version: String? = nil) throws {
+        let buildDir: Path = {
+            let pathComponent = "SwiftTemplate" + (version.map { "/\($0)" } ?? "")
+            guard let tempDirURL = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(pathComponent) else {
+                fatalError("Unable to get temporary path")
+            }
+            return Path(tempDirURL.path)
+        }()
+
         try super.init(
             path: path,
-            cachePath: cachePath,
-            version: version,
             prefix: """
             import Foundation
             import RuntimeCode
@@ -26,7 +32,26 @@ open class SwiftTemplate: SwiftTemplateEngine.SwiftTemplate {
             let type = context.types.typesByName
             let argument = context.argument
             """,
-            runtimeFiles: sourceryRuntimeFiles
+            runtimeFiles: sourceryRuntimeFiles,
+            manifestCode: """
+            // swift-tools-version:4.0
+            // The swift-tools-version declares the minimum version of Swift required to build this package.
+            import PackageDescription
+            let package = Package(
+                name: "SwiftTemplate",
+                products: [
+                    .executable(name: "SwiftTemplate", targets: ["SwiftTemplate"])
+                ],
+                targets: [
+                    .target(name: "RuntimeCode"),
+                    .target(
+                        name: "SwiftTemplate",
+                        dependencies: ["RuntimeCode"]),
+                ]
+            )
+            """,
+            buildDir: buildDir,
+            cachePath: cachePath
         )
     }
 }

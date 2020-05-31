@@ -24,35 +24,42 @@ private enum Command {
 
 open class SwiftTemplate {
     public let sourcePath: Path
-    public let cachePath: Path?
     public let code: String
-    public let version: String?
     public let includedFiles: [Path]
+    public let buildDir: Path
     public let runtimeFiles: [File]
-
-    public private(set) lazy var buildDir: Path = {
-        let pathComponent = "SwiftTemplate" + (version.map { "/\($0)" } ?? "")
-        guard let tempDirURL = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(pathComponent) else {
-            fatalError("Unable to get temporary path")
-        }
-        return Path(tempDirURL.path)
-    }()
+    public let manifestCode: String
+    public let cachePath: Path?
 
     public init(
         path: Path,
-        cachePath: Path? = nil,
-        version: String? = nil,
         prefix: String,
-        runtimeFiles: [File]
+        runtimeFiles: [File],
+        manifestCode: String,
+        buildDir: Path,
+        cachePath: Path?
     ) throws {
         self.sourcePath = path
-        self.cachePath = cachePath
-        self.version = version
+        self.buildDir = buildDir
         self.runtimeFiles = runtimeFiles
+        self.manifestCode = manifestCode
+        self.cachePath = cachePath
         (self.code, self.includedFiles) = try Self.parse(sourcePath: path, prefix: prefix)
     }
 
-    public func render(_ context: Any) throws -> String {
+    public func render<T: Codable>(_ context: T) throws -> String {
+        try render(context) {
+            try JSONEncoder().encode($0)
+        }
+    }
+
+    public func render<T: NSCoding>(_ context: T) throws -> String {
+        try render(context) {
+            NSKeyedArchiver.archivedData(withRootObject: $0)
+        }
+    }
+
+    private func render<T>(_ context: T, encode: (T) throws -> Data) throws -> String {
         let binaryPath: Path
 
         if let cachePath = cachePath,
@@ -70,16 +77,22 @@ open class SwiftTemplate {
         }
 
         let serializedContextPath = buildDir + "context.bin"
-        let data = NSKeyedArchiver.archivedData(withRootObject: context)
+        let data = try encode(context)
         if !buildDir.exists {
             try buildDir.mkpath()
         }
         try serializedContextPath.write(data)
 
-        let result = try Process.runCommand(path: binaryPath.description,
-                                            arguments: [serializedContextPath.description])
+        let result = Process.runCommand(
+            path: binaryPath.description,
+            arguments: [serializedContextPath.description]
+        )
         if !result.error.isEmpty {
-            throw "\(sourcePath): \(result.error)"
+            throw """
+            Error rendering \(sourcePath):
+            Error: \(result.error)
+            Output: \(result.output)
+            """
         }
         return result.output
     }
@@ -229,39 +242,21 @@ open class SwiftTemplate {
             "-Xswiftc", "-suppress-warnings",
             "--disable-sandbox"
         ]
-        let compilationResult = try Process.runCommand(
+        let compilationResult = Process.runCommand(
             path: "/usr/bin/env",
             arguments: arguments,
             currentDirectoryPath: buildDir
         )
 
-        if compilationResult.exitCode != 0 || !compilationResult.error.isEmpty {
-            throw compilationResult.output
+        if compilationResult.exitCode != 0 {
+            throw """
+            Error building \(buildDir):
+            Error: \(compilationResult.error)
+            Output: \(compilationResult.output)
+            """
         }
 
         return binaryFile
-    }
-
-    private var manifestCode: String {
-        return """
-        // swift-tools-version:4.0
-        // The swift-tools-version declares the minimum version of Swift required to build this package.
-
-        import PackageDescription
-
-        let package = Package(
-        name: "SwiftTemplate",
-        products: [
-        .executable(name: "SwiftTemplate", targets: ["SwiftTemplate"])
-        ],
-        targets: [
-        .target(name: "RuntimeCode"),
-        .target(
-        name: "SwiftTemplate",
-        dependencies: ["RuntimeCode"]),
-        ]
-        )
-        """
     }
 
     private func copyRuntimePackage(to path: Path) throws {

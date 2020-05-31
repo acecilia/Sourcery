@@ -7,7 +7,7 @@ extension Process {
         arguments: [String],
         environment: [String: String] = [:],
         currentDirectoryPath: Path? = nil
-    ) throws -> ProcessResult {
+    ) -> ProcessResult {
         let task = Process()
         task.launchPath = path
         task.arguments = arguments

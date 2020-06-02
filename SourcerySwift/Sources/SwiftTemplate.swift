@@ -22,7 +22,7 @@ open class SwiftTemplate: SwiftTemplateEngine.SwiftTemplate {
 
         try super.init(
             path: path,
-            prefix: """
+            makeMain: { """
             import Foundation
             import RuntimeCode
 
@@ -31,7 +31,10 @@ open class SwiftTemplate: SwiftTemplateEngine.SwiftTemplate {
             let functions = context.functions
             let type = context.types.typesByName
             let argument = context.argument
-            """,
+
+            \($0)
+            """
+            },
             runtimeFiles: sourceryRuntimeFiles,
             manifestCode: """
             // swift-tools-version:4.0

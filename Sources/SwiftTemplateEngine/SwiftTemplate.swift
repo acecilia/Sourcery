@@ -33,7 +33,7 @@ open class SwiftTemplate {
 
     public init(
         path: Path,
-        prefix: String,
+        makeMain: (String) -> String,
         runtimeFiles: [File],
         manifestCode: String,
         buildDir: Path,
@@ -44,7 +44,7 @@ open class SwiftTemplate {
         self.runtimeFiles = runtimeFiles
         self.manifestCode = manifestCode
         self.cachePath = cachePath
-        (self.code, self.includedFiles) = try Self.parse(sourcePath: path, prefix: prefix)
+        (self.code, self.includedFiles) = try Self.parse(sourcePath: path, makeMain: makeMain)
     }
 
     public func render<T: Codable>(_ context: T) throws -> String {
@@ -97,7 +97,7 @@ open class SwiftTemplate {
         return result.output
     }
 
-    private static func parse(sourcePath: Path, prefix: String) throws -> (String, [Path]) {
+    private static func parse(sourcePath: Path, makeMain: (String) -> String) throws -> (String, [Path]) {
         let commands = try Self.parseCommands(in: sourcePath)
 
         var includedFiles: [Path] = []
@@ -118,13 +118,9 @@ open class SwiftTemplate {
         }
 
         let contents = outputFile.joined(separator: "\n")
-        let code = """
-        \(prefix)
+        let mainCode = makeMain(contents)
 
-        \(contents)
-        """
-
-        return (code, includedFiles)
+        return (mainCode, includedFiles)
     }
 
     private static func parseCommands(in sourcePath: Path, includeStack: [Path] = []) throws -> [Command] {
